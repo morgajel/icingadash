@@ -35,32 +35,38 @@ EOF
 ;
 
 print "<h1>Host Info</h1>\n";
-foreach my $host ( keys %{ $status_object->{'HOSTS'}}) {
-    my $current_state=$status_object->{'HOSTS'}->{$host}->{'current_state'} ;
-    $host=~s/ /+/g;
+foreach my $hostname ( keys %{ $status_object->{'HOSTS'}}) {
+    my $host=$status_object->{'HOSTS'}->{$hostname} ;
+    $hostname=~s/ /+/g;
     my $color="#ffffff";
-    switch ($current_state){
+    switch ($host->{'current_state'}){
         case(0) { $color = "green";  }
         case(1) { $color = "yellow"; }
-        case(2) { $color = "red";    }
+        case(2) { $color = "red";    
+                    if ($host->{'problem_has_been_acknowledged'} == 1 ){$color = "#FF5555"}
+                }
         else    { $color = "purple"; }
     }
-    print "<a href='$target_url?type=1&host=$host'><div class='box' style='background-color:$color' title='$host'></div></a>";
+    print "<a href='$target_url?type=1&host=$hostname'><div class='box' style='background-color:$color' title='$hostname'></div></a>";
 }
 
 print "<h1>Service Info</h1>\n";
 foreach my $servicekey ( keys %{ $status_object->{'SERVICES'}}) {
-    my $current_state=$status_object->{'SERVICES'}->{$servicekey}->{'current_state'};
+    my $service=$status_object->{'SERVICES'}->{$servicekey};
     $servicekey=~s/ /+/g;
-    my ($host,$service)=split /_/,$servicekey;
+    my ($hostname,$servicename)=split /_/,$servicekey;
     my $color="#ffffff";
-    switch ($current_state){
+    switch ($service->{'current_state'}){
         case(0) { $color = "green";  }
         case(1) { $color = "yellow"; }
-        case(2) { $color = "red";    }
+        case(2) { $color = "red";    
+                    if ($service->{'problem_has_been_acknowledged'} == 1 ){$color = "#FF5555"}
+                }
         else    { $color = "purple"; }
     }
-    print "<a href='$target_url?type=2&host=$host&service=$service'><div class='box' style='background-color:$color' title='$host $service'></div></a>";
+    print "<a href='$target_url?type=2&host=$hostname&service=$servicename'><div class='box' style='background-color:$color' title='$hostname $servicename'></div></a>";
 }
-
+    print "<!--\n";
+#    print Dumper $status_object;
+    print "-->\n";
 print "</body>\n</html>\n";
