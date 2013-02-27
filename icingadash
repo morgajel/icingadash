@@ -45,7 +45,7 @@ foreach my $host ( keys %{ $status_object->{'HOSTS'}}) {
         case(2) { $color = "red";    }
         else    { $color = "purple"; }
     }
-    print "<a href='$target_url?type=1&host=$host'><div class='box' style='background-color:$color' title= '$host'></div></a>\n";
+    print "<a href='$target_url?type=1&host=$host'><div class='box' style='background-color:$color' title='$host'></div></a>";
 }
 
 print "<h1>Service Info</h1>\n";
@@ -60,7 +60,7 @@ foreach my $servicekey ( keys %{ $status_object->{'SERVICES'}}) {
         case(2) { $color = "red";    }
         else    { $color = "purple"; }
     }
-    print "<a href='$target_url?type=2&host=$host&service=$service'><div class='box' style='background-color:$color' title= '$host $service'></div></a>\n";
+    print "<a href='$target_url?type=2&host=$host&service=$service'><div class='box' style='background-color:$color' title='$host $service'></div></a>";
 }
 
 print "</body>\n</html>\n";
