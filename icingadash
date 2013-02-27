@@ -15,13 +15,29 @@ my $status_object = NagiosStatus->new($statusfile);
 $status_object->parse_statusfile();
 $status_object->evaluate();
 
-print "Content-Type: text/html; charset=ISO-8859-1\n\n";
-print "<html>\n";
-print "<head><meta http-equiv='refresh' content='$refresh'></head>\n";
-print "<body>\n";
+print <<"EOF"
+Content-Type: text/html; charset=ISO-8859-1
+
+<html>
+    <head>
+        <meta http-equiv='refresh' content='$refresh'>
+        <style type="text/css">
+            .box {
+                margin:1px 1px 0px 0px;
+                width:$boxsize;
+                height:$boxsize;
+                display:inline-block;
+            }
+        </style>
+    </head>
+<body>
+EOF
+;
+
 print "<h1>Host Info</h1>\n";
 foreach my $host ( keys %{ $status_object->{'HOSTS'}}) {
     my $current_state=$status_object->{'HOSTS'}->{$host}->{'current_state'} ;
+    $host=~s/ /+/g;
     my $color="#ffffff";
     switch ($current_state){
         case(0) { $color = "green";  }
@@ -29,12 +45,13 @@ foreach my $host ( keys %{ $status_object->{'HOSTS'}}) {
         case(2) { $color = "red";    }
         else    { $color = "purple"; }
     }
-    print "<a href='$target_url?type=1&host=$host'><div style='margin-top:1px;margin-left:1px;width:$boxsize;height:$boxsize;display:inline-block;background-color:$color' title= '$host'></div></a>";
+    print "<a href='$target_url?type=1&host=$host'><div class='box' style='background-color:$color' title= '$host'></div></a>\n";
 }
 
 print "<h1>Service Info</h1>\n";
 foreach my $servicekey ( keys %{ $status_object->{'SERVICES'}}) {
     my $current_state=$status_object->{'SERVICES'}->{$servicekey}->{'current_state'};
+    $servicekey=~s/ /+/g;
     my ($host,$service)=split /_/,$servicekey;
     my $color="#ffffff";
     switch ($current_state){
@@ -43,7 +60,7 @@ foreach my $servicekey ( keys %{ $status_object->{'SERVICES'}}) {
         case(2) { $color = "red";    }
         else    { $color = "purple"; }
     }
-    print "<a href='$target_url?type=2&host=$host&service=$service'><div style='margin-top:1px;margin-left:1px;width:$boxsize;height:$boxsize;display:inline-block;background-color:$color' title= '$host $service'></div></a>";
+    print "<a href='$target_url?type=2&host=$host&service=$service'><div class='box' style='background-color:$color' title= '$host $service'></div></a>\n";
 }
 
 print "</body>\n</html>\n";
