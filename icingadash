@@ -1,0 +1,49 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+use Switch;
+use Data::Dumper;
+use NagiosStatus;
+
+my $boxsize="20px";
+my $statusfile="/var/spool/icinga/status.dat";
+my $target_url="/icinga/cgi-bin/extinfo.cgi";
+my $refresh=5*60; #5 minutes
+
+my $status_object = NagiosStatus->new($statusfile);
+$status_object->parse_statusfile();
+$status_object->evaluate();
+
+print "Content-Type: text/html; charset=ISO-8859-1\n\n";
+print "<html>\n";
+print "<head><meta http-equiv='refresh' content='$refresh'></head>\n";
+print "<body>\n";
+print "<h1>Host Info</h1>\n";
+foreach my $host ( keys %{ $status_object->{'HOSTS'}}) {
+    my $current_state=$status_object->{'HOSTS'}->{$host}->{'current_state'} ;
+    my $color="#ffffff";
+    switch ($current_state){
+        case(0) { $color = "green";  }
+        case(1) { $color = "yellow"; }
+        case(2) { $color = "red";    }
+        else    { $color = "purple"; }
+    }
+    print "<a href='$target_url?type=1&host=$host'><div style='margin-top:1px;margin-left:1px;width:$boxsize;height:$boxsize;display:inline-block;background-color:$color' title= '$host'></div></a>";
+}
+
+print "<h1>Service Info</h1>\n";
+foreach my $servicekey ( keys %{ $status_object->{'SERVICES'}}) {
+    my $current_state=$status_object->{'SERVICES'}->{$servicekey}->{'current_state'};
+    my ($host,$service)=split /_/,$servicekey;
+    my $color="#ffffff";
+    switch ($current_state){
+        case(0) { $color = "green";  }
+        case(1) { $color = "yellow"; }
+        case(2) { $color = "red";    }
+        else    { $color = "purple"; }
+    }
+    print "<a href='$target_url?type=2&host=$host&service=$service'><div style='margin-top:1px;margin-left:1px;width:$boxsize;height:$boxsize;display:inline-block;background-color:$color' title= '$host $service'></div></a>";
+}
+
+print "</body>\n</html>\n";
