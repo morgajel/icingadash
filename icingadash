@@ -6,7 +6,7 @@ use Switch;
 use Data::Dumper;
 use NagiosStatus;
 
-my $boxsize="20px";
+my $boxsize="18px";
 my $statusfile="/var/spool/icinga/status.dat";
 my $target_url="/icinga/cgi-bin/extinfo.cgi";
 my $refresh=5*60; #5 minutes
@@ -31,10 +31,11 @@ Content-Type: text/html; charset=ISO-8859-1
         </style>
     </head>
 <body>
+    <h1>Icinga Dashboard</h1>
 EOF
 ;
 
-print "<h1>Host Info</h1>\n";
+print "<h2>Host Info</h2>\n";
 foreach my $hostname ( keys %{ $status_object->{'HOSTS'}}) {
     my $host=$status_object->{'HOSTS'}->{$hostname} ;
     $hostname=~s/ /+/g;
@@ -47,24 +48,31 @@ foreach my $hostname ( keys %{ $status_object->{'HOSTS'}}) {
                 }
         else    { $color = "purple"; }
     }
+
+
     print "<a href='$target_url?type=1&host=$hostname'><div class='box' style='background-color:$color' title='$hostname'></div></a>";
 }
 
-print "<h1>Service Info</h1>\n";
-foreach my $servicekey ( keys %{ $status_object->{'SERVICES'}}) {
+print "<h2>Service Info</h2>\n";
+foreach my $servicekey ( sort keys %{ $status_object->{'SERVICES'}}) {
     my $service=$status_object->{'SERVICES'}->{$servicekey};
     $servicekey=~s/ /+/g;
     my ($hostname,$servicename)=split /_/,$servicekey;
     my $color="#ffffff";
     switch ($service->{'current_state'}){
-        case(0) { $color = "green";  }
-        case(1) { $color = "yellow"; }
-        case(2) { $color = "red";    
-                    if ($service->{'problem_has_been_acknowledged'} == 1 ){$color = "#FF5555"}
-                }
-        else    { $color = "purple"; }
+        case(0) { $color = "#008000";  }
+        case(1) { $color = ($service->{'problem_has_been_acknowledged'} == 1 ) ? "#FFFF55" : "#FFFF00"; }
+        case(2) { $color = ($service->{'problem_has_been_acknowledged'} == 1 ) ? "#FF5555" : "#FF0000"; }
+        else    { $color = ($service->{'problem_has_been_acknowledged'} == 1 ) ? "#855585" : "#800080"; }
     }
-    print "<a href='$target_url?type=2&host=$hostname&service=$servicename'><div class='box' style='background-color:$color' title='$hostname $servicename'></div></a>";
+    my $title="$hostname $servicename";
+    my $content="&nbsp;";
+    if ($service->{'problem_has_been_acknowledged'} == 1 ){
+        $content= "&#8730; ";
+        $title.="(Acknowledged)\n\n ".$service->{'plugin_output'};
+
+    }
+    print "<a href='$target_url?type=2&host=$hostname&service=$servicename'><div class='box' style='background-color:$color;text-align:center;font-size:100%' title=\"$title\">$content</div></a>";
 }
     print "<!--\n";
 #    print Dumper $status_object;
