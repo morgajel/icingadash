@@ -26,7 +26,10 @@ Content-Type: text/html; charset=ISO-8859-1
                 margin:1px 1px 0px 0px;
                 width:$boxsize;
                 height:$boxsize;
-                display:inline-block;
+                text-align:center;
+                display:block;
+                float:left;
+                text-decoration:none;
             }
         </style>
     </head>
@@ -50,10 +53,10 @@ foreach my $hostname ( keys %{ $status_object->{'HOSTS'}}) {
     }
 
 
-    print "<a href='$target_url?type=1&host=$hostname'><div class='box' style='background-color:$color' title='$hostname'></div></a>";
+    print "<a href='$target_url?type=1&host=$hostname' class='box' style='background-color:$color' title='$hostname'></a>";
 }
 
-print "<h2>Service Info</h2>\n";
+print "<br clear='all'/><h2>Service Info</h2>\n";
 foreach my $servicekey ( sort keys %{ $status_object->{'SERVICES'}}) {
     my $service=$status_object->{'SERVICES'}->{$servicekey};
     $servicekey=~s/ /+/g;
@@ -69,10 +72,13 @@ foreach my $servicekey ( sort keys %{ $status_object->{'SERVICES'}}) {
     my $content="&nbsp;";
     if ($service->{'problem_has_been_acknowledged'} == 1 ){
         $content= "&#8730; ";
-        $title.="(Acknowledged)\n\n ".$service->{'plugin_output'};
+        my $pluginoutput=$service->{'plugin_output'};
+        $pluginoutput=~s/</&lt;/g;
+        $pluginoutput=~s/>/&gt;/g;
+        $title.="(Acknowledged)\n\n ".$pluginoutput;
 
     }
-    print "<a href='$target_url?type=2&host=$hostname&service=$servicename'><div class='box' style='background-color:$color;text-align:center;font-size:100%' title=\"$title\">$content</div></a>";
+    print "<a href='$target_url?type=2&host=$hostname&service=$servicename' class='box' style='background-color:$color;' title=\"$title\">$content</a>";
 }
     print "<!--\n";
 #    print Dumper $status_object;
