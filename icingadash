@@ -5,82 +5,149 @@ use warnings;
 use Switch;
 use Data::Dumper;
 use NagiosStatus;
+use CGI;
+my $boxsize="18";
 
-my $boxsize="18px";
-my $statusfile="/var/spool/icinga/status.dat";
-my $target_url="/icinga/cgi-bin/extinfo.cgi";
-my $refresh=5*60; #5 minutes
+use constant {
+        STATUSFILE => "/var/spool/icinga/status.dat",
+        TARGET_URL=>"/icinga/cgi-bin/extinfo.cgi",
+        REFRESH=>5*60, # 5 minutes
+};
 
-my $status_object = NagiosStatus->new($statusfile);
-$status_object->parse_statusfile();
-$status_object->evaluate();
+# Process querystring params
+my $q = CGI->new;
+if (defined $q->param('boxsize')  and  $q->param('boxsize') =~ /^\d{1,3}$/){
+    $boxsize=$q->param('boxsize');
+}
+$boxsize.="px";
 
-print <<"EOF"
+
+
+# load Status Object:
+my $status = NagiosStatus->new(STATUSFILE);
+$status->parse_statusfile();
+$status->evaluate();
+
+
+
+sub print_header{
+    my ($boxsize)=@_;
+    my $refresh=REFRESH;
+    print <<"EOF"
 Content-Type: text/html; charset=ISO-8859-1
 
 <html>
     <head>
         <meta http-equiv='refresh' content='$refresh'>
         <style type="text/css">
+            h1, h2 {
+                font-family:sans-serif;
+                margin-bottom:5px;
+            }
             .box {
-                margin:1px 1px 0px 0px;
+                margin:2px 2px 0px 0px;
                 width:$boxsize;
                 height:$boxsize;
+                font-size:$boxsize;
                 text-align:center;
                 display:block;
                 float:left;
                 text-decoration:none;
             }
+            .ok {background-color:green;}
+            .warning {background-color:#eeee00}
+            .warning-ack {background-color:#eeee66}
+            .critical {background-color:#ee0000}
+            .critical-ack {background-color:#ee6666}
+            .unknown {background-color:purple}
+            .unknown-ack {background-color:plum}
         </style>
     </head>
 <body>
     <h1>Icinga Dashboard</h1>
 EOF
-;
-
-print "<h2>Host Info</h2>\n";
-foreach my $hostname ( keys %{ $status_object->{'HOSTS'}}) {
-    my $host=$status_object->{'HOSTS'}->{$hostname} ;
-    $hostname=~s/ /+/g;
-    my $color="#ffffff";
-    switch ($host->{'current_state'}){
-        case(0) { $color = "green";  }
-        case(1) { $color = "yellow"; }
-        case(2) { $color = "red";    
-                    if ($host->{'problem_has_been_acknowledged'} == 1 ){$color = "#FF5555"}
-                }
-        else    { $color = "purple"; }
-    }
-
-
-    print "<a href='$target_url?type=1&host=$hostname' class='box' style='background-color:$color' title='$hostname'></a>";
+    ;
 }
 
-print "<br clear='all'/><h2>Service Info</h2>\n";
-foreach my $servicekey ( sort keys %{ $status_object->{'SERVICES'}}) {
-    my $service=$status_object->{'SERVICES'}->{$servicekey};
+
+sub title_filter{
+    my ($title, $object)=@_;
+    my $pluginoutput=$object->{'plugin_output'};
+    $pluginoutput=~s/</&lt;/g;
+    $pluginoutput=~s/>/&gt;/g;
+    return $title."\n\n ".$pluginoutput;
+}
+
+sub print_host{
+    my ($hostname, $host)=@_;
+    $hostname=~s/ /+/g;
+    my $status="";
+    my $content="&nbsp;";
+    my $title="$hostname";
+    switch ($host->{'current_state'}){
+        case(0) { $status = "ok";  }
+        case(1) { $status = "critical"; 
+        } else { 
+               $status = "unknown"; 
+                }
+    }
+    if ($host->{'problem_has_been_acknowledged'} == 1 ){
+        $status .= "-ack";
+        $content= "&#8730;";
+        $title.=" (Acknowledged)";
+    }
+        $title=title_filter($title, $host);
+
+    print "<a href='".TARGET_URL."?type=1&host=$hostname' class='box $status' title='$title'>$content</a>\n";
+
+}
+sub print_service {
+    my ( $servicekey, $service)=@_;
     $servicekey=~s/ /+/g;
     my ($hostname,$servicename)=split /_/,$servicekey;
-    my $color="#ffffff";
-    switch ($service->{'current_state'}){
-        case(0) { $color = "#008000";  }
-        case(1) { $color = ($service->{'problem_has_been_acknowledged'} == 1 ) ? "#FFFF55" : "#FFFF00"; }
-        case(2) { $color = ($service->{'problem_has_been_acknowledged'} == 1 ) ? "#FF5555" : "#FF0000"; }
-        else    { $color = ($service->{'problem_has_been_acknowledged'} == 1 ) ? "#855585" : "#800080"; }
-    }
     my $title="$hostname $servicename";
+    my $status="";
     my $content="&nbsp;";
-    if ($service->{'problem_has_been_acknowledged'} == 1 ){
-        $content= "&#8730; ";
-        my $pluginoutput=$service->{'plugin_output'};
-        $pluginoutput=~s/</&lt;/g;
-        $pluginoutput=~s/>/&gt;/g;
-        $title.="(Acknowledged)\n\n ".$pluginoutput;
-
+    switch ($service->{'current_state'}){
+        case(0) { $status = "ok";  }
+        case(1) { $status = "warning"; }
+        case(2) { $status = "critical"; }
+        else    { $status = "unknown"; }
     }
-    print "<a href='$target_url?type=2&host=$hostname&service=$servicename' class='box' style='background-color:$color;' title=\"$title\">$content</a>";
+    if (defined $service->{'problem_has_been_acknowledged'} and $service->{'problem_has_been_acknowledged'}==1 ){
+        $status.="-ack";
+        $content= "&#8730;";
+        $title.=" (Acknowledged)";
+    }
+    $title=title_filter($title, $service);
+    print "<a href='".TARGET_URL."?type=2&host=$hostname&service=$servicename' class='box $status' title=\"$title\">$content</a>\n";
 }
+
+sub print_footer{
     print "<!--\n";
-#    print Dumper $status_object;
+    #    print Dumper $status;
     print "-->\n";
-print "</body>\n</html>\n";
+    print "</body>\n</html>\n";
+}
+
+sub print_host_data{
+    my ($status)=@_;
+    print "<h2>Host Info</h2>\n";
+    foreach my $hostname ( keys %{ $status->{'HOSTS'}}) {
+        print_host($hostname, $status->{'HOSTS'}->{$hostname} );
+    }
+}
+
+sub print_service_data{
+    my ($status)=@_;
+    print "<br clear='all'/><h2>Service Info</h2>\n";
+    foreach my $servicekey ( sort keys %{ $status->{'SERVICES'}}) {
+        print_service($servicekey, $status->{'SERVICES'}->{$servicekey});
+    }
+}
+
+
+print_header($boxsize);
+print_host_data($status);
+print_service_data($status);
+print_footer();
