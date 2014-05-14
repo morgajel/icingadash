@@ -54,17 +54,42 @@ Content-Type: text/html; charset=ISO-8859-1
                 float:left;
                 text-decoration:none;
             }
+            .legend {
+                width:120px;
+                height:30px;
+                font-size:18px;
+            }
+            .legendtext {
+                width:240px;
+                height:40px;
+                font-size:18px;
+            }
             .ok {background-color:green;}
             .warning {background-color:#eeee00}
-            .warning-ack {background-color:#eeee66}
+            .warning-ack {background-color:#f5f599}
             .critical {background-color:#ee0000}
             .critical-ack {background-color:#ee6666}
-            .unknown {background-color:purple}
+            .unknown {background-color:A020F0}
             .unknown-ack {background-color:plum}
         </style>
     </head>
 <body>
-    <h1>Icinga Dashboard</h1>
+    <h1><a href="/icinga/">Icinga Dashboard</a></h1>
+    <div style="float:right; border:1px solid gray; margin:5px;padding:5px;">
+        <h2>legend</h2>
+        <div class="box legend ok" >ok</div>
+        <div class="box legend warning" >warning</div>
+        <div class="box legend critical" >critical</div>
+        <div class="box legend unknown" >unknown</div>
+        <br>
+        <div class="box legend ok-ack" >Acknowledged:</div>
+        <div class="box legend warning-ack" >warning</div>
+        <div class="box legend critical-ack" >critical</div>
+        <div class="box legend unknown-ack" >unknown</div>
+        <br>
+        <div class="box legendtext">H = Host Acknowledged</div>    
+        <div class="box legendtext">&#8730;= Service Acknowledged</div>
+    </div>
 EOF
     ;
 }
@@ -102,25 +127,29 @@ sub print_host{
 
 }
 sub print_service {
-    my ( $servicekey, $service)=@_;
+    my ( $servicekey, $service, $status)=@_;
     $servicekey=~s/ /+/g;
     my ($hostname,$servicename)=split /_/,$servicekey;
     my $title="$hostname $servicename";
-    my $status="";
+    my $returncode="";
     my $content="&nbsp;";
     switch ($service->{'current_state'}){
-        case(0) { $status = "ok";  }
-        case(1) { $status = "warning"; }
-        case(2) { $status = "critical"; }
-        else    { $status = "unknown"; }
+        case(0) { $returncode = "ok";  }
+        case(1) { $returncode = "warning"; }
+        case(2) { $returncode = "critical"; }
+        else    { $returncode = "unknown"; }
     }
     if (defined $service->{'problem_has_been_acknowledged'} and $service->{'problem_has_been_acknowledged'}==1 ){
-        $status.="-ack";
+        $returncode.="-ack";
         $content= "&#8730;";
         $title.=" (Acknowledged)";
+    }elsif ($returncode ne "ok"  and $status->{'HOSTS'}->{$hostname}->{'problem_has_been_acknowledged'} == 1 ){
+        $returncode.="-ack";
+        $content= "H";
+        $title.=" (Acknowledged Host Down)";
     }
     $title=title_filter($title, $service);
-    print "<a href='".TARGET_URL."?type=2&host=$hostname&service=$servicename' class='box $status' title=\"$title\">$content</a>\n";
+    print "<a href='".TARGET_URL."?type=2&host=$hostname&service=$servicename' class='box $returncode' title=\"$title\">$content</a>\n";
 }
 
 sub print_footer{
@@ -142,7 +171,7 @@ sub print_service_data{
     my ($status)=@_;
     print "<br clear='all'/><h2>Service Info</h2>\n";
     foreach my $servicekey ( sort keys %{ $status->{'SERVICES'}}) {
-        print_service($servicekey, $status->{'SERVICES'}->{$servicekey});
+        print_service($servicekey, $status->{'SERVICES'}->{$servicekey}, $status);
     }
 }
 
